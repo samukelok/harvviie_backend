@@ -40,8 +40,8 @@ A comprehensive Laravel 10+ API backend for Harvviie fashion e-commerce platform
 
 1. **Clone the repository**
 ```bash
-git clone <repository-url>
-cd harvviie-api
+git clone https://github.com/samukelok/harvviie_backend
+cd harvviie_backend
 ```
 
 2. **Install dependencies**
@@ -88,7 +88,7 @@ php artisan serve
 The API uses Laravel Sanctum for authentication. Update your `.env` with allowed domains:
 
 ```env
-SANCTUM_STATEFUL_DOMAINS=127.0.0.1,127.0.0.1:3000,localhost,127.0.0.1:8000,::1,your-frontend-domain.com
+SANCTUM_STATEFUL_DOMAINS=127.0.0.1,127.0.0.1:3000,localhost,127.0.0.1:8000,::1,harvviie.co.za
 ```
 
 ### CORS Configuration
@@ -500,7 +500,6 @@ The API includes comprehensive error handling for:
 
 For support and questions about the Harvviie API:
 
-- Email: cyberkru9@gmail.com
 - Documentation: This README file
 - API Testing: Use the provided cURL examples or Postman
 
