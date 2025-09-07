@@ -5,50 +5,59 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Product\StoreProductRequest;
 use App\Http\Requests\Product\UpdateProductRequest;
-use App\Http\Resources\ProductResource;
 use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
+/**
+ * @OA\Tag(
+ *     name="Products",
+ *     description="Endpoints for managing products"
+ * )
+ */
 class ProductController extends Controller
 {
+    /**
+     * @OA\Get(
+     *     path="/api/products",
+     *     tags={"Products"},
+     *     summary="Get paginated list of products",
+     *     @OA\Parameter(name="q", in="query", description="Search query", required=false, @OA\Schema(type="string")),
+     *     @OA\Parameter(name="collection", in="query", description="Filter by collection ID", required=false, @OA\Schema(type="integer")),
+     *     @OA\Parameter(name="in_stock", in="query", description="Filter products in stock", required=false, @OA\Schema(type="boolean")),
+     *     @OA\Parameter(name="is_active", in="query", description="Filter active products", required=false, @OA\Schema(type="boolean")),
+     *     @OA\Parameter(name="include_deleted", in="query", description="Include soft-deleted products (admin only)", required=false, @OA\Schema(type="boolean")),
+     *     @OA\Parameter(name="per_page", in="query", description="Number of products per page", required=false, @OA\Schema(type="integer", default=15)),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Products retrieved successfully"
+     *     )
+     * )
+     */
     public function index(Request $request)
     {
         $query = Product::with(['images', 'collections']);
 
-        // Apply filters
         if ($request->filled('q')) {
             $query->search($request->q);
         }
 
         if ($request->filled('collection')) {
-            $query->whereHas('collections', function ($q) use ($request) {
-                $q->where('collections.id', $request->collection);
-            });
+            $query->whereHas('collections', fn($q) => $q->where('collections.id', $request->collection));
         }
 
-        if ($request->boolean('in_stock')) {
-            $query->inStock();
-        }
+        if ($request->boolean('in_stock')) $query->inStock();
+        if ($request->has('is_active')) $query->where('is_active', $request->boolean('is_active'));
+        if ($request->boolean('include_deleted') && $request->user()?->isAdmin()) $query->withTrashed();
 
-        if ($request->has('is_active')) {
-            $query->where('is_active', $request->boolean('is_active'));
-        }
-
-        // Include trashed if requested (admin only)
-        if ($request->boolean('include_deleted') && $request->user()?->isAdmin()) {
-            $query->withTrashed();
-        }
-
-        $products = $query->orderBy('created_at', 'desc')
-                         ->paginate($request->input('per_page', 15));
+        $products = $query->orderBy('created_at', 'desc')->paginate($request->input('per_page', 15));
 
         return response()->json([
             'success' => true,
             'message' => 'Products retrieved successfully',
             'data' => [
-                'products' => ProductResource::collection($products),
+                'products' => $products->items(),
                 'pagination' => [
                     'current_page' => $products->currentPage(),
                     'total_pages' => $products->lastPage(),
@@ -59,6 +68,15 @@ class ProductController extends Controller
         ]);
     }
 
+    /**
+     * @OA\Get(
+     *     path="/api/products/{id}",
+     *     tags={"Products"},
+     *     summary="Get single product by ID",
+     *     @OA\Parameter(name="id", in="path", description="Product ID", required=true, @OA\Schema(type="integer")),
+     *     @OA\Response(response=200, description="Product retrieved successfully")
+     * )
+     */
     public function show(Product $product)
     {
         $product->load(['images', 'collections']);
@@ -66,16 +84,31 @@ class ProductController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Product retrieved successfully',
-            'data' => [
-                'product' => new ProductResource($product)
-            ]
+            'data' => ['product' => $product]
         ]);
     }
 
+    /**
+     * @OA\Post(
+     *     path="/api/products",
+     *     tags={"Products"},
+     *     summary="Create a new product",
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             @OA\Property(property="name", type="string"),
+     *             @OA\Property(property="price_cents", type="integer"),
+     *             @OA\Property(property="is_active", type="boolean"),
+     *             @OA\Property(property="images", type="array", @OA\Items(type="string", format="binary"))
+     *         )
+     *     ),
+     *     @OA\Response(response=201, description="Product created successfully")
+     * )
+     */
     public function store(StoreProductRequest $request)
     {
         DB::beginTransaction();
-        
+
         try {
             $product = Product::create($request->validated());
 
@@ -90,9 +123,7 @@ class ProductController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Product created successfully',
-                'data' => [
-                    'product' => new ProductResource($product)
-                ]
+                'data' => ['product' => $product]
             ], 201);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -104,10 +135,28 @@ class ProductController extends Controller
         }
     }
 
+    /**
+     * @OA\Put(
+     *     path="/api/products/{id}",
+     *     tags={"Products"},
+     *     summary="Update a product",
+     *     @OA\Parameter(name="id", in="path", description="Product ID", required=true, @OA\Schema(type="integer")),
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             @OA\Property(property="name", type="string"),
+     *             @OA\Property(property="price_cents", type="integer"),
+     *             @OA\Property(property="is_active", type="boolean"),
+     *             @OA\Property(property="images", type="array", @OA\Items(type="string", format="binary"))
+     *         )
+     *     ),
+     *     @OA\Response(response=200, description="Product updated successfully")
+     * )
+     */
     public function update(UpdateProductRequest $request, Product $product)
     {
         DB::beginTransaction();
-        
+
         try {
             $product->update($request->validated());
 
@@ -122,9 +171,7 @@ class ProductController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Product updated successfully',
-                'data' => [
-                    'product' => new ProductResource($product)
-                ]
+                'data' => ['product' => $product]
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -136,6 +183,15 @@ class ProductController extends Controller
         }
     }
 
+    /**
+     * @OA\Delete(
+     *     path="/api/products/{id}",
+     *     tags={"Products"},
+     *     summary="Delete a product",
+     *     @OA\Parameter(name="id", in="path", description="Product ID", required=true, @OA\Schema(type="integer")),
+     *     @OA\Response(response=200, description="Product deleted successfully")
+     * )
+     */
     public function destroy(Product $product)
     {
         $product->delete();
@@ -147,6 +203,15 @@ class ProductController extends Controller
         ]);
     }
 
+    /**
+     * @OA\Post(
+     *     path="/api/products/{id}/restore",
+     *     tags={"Products"},
+     *     summary="Restore a soft-deleted product",
+     *     @OA\Parameter(name="id", in="path", description="Product ID", required=true, @OA\Schema(type="integer")),
+     *     @OA\Response(response=200, description="Product restored successfully")
+     * )
+     */
     public function restore($id)
     {
         $product = Product::withTrashed()->findOrFail($id);
@@ -155,9 +220,7 @@ class ProductController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Product restored successfully',
-            'data' => [
-                'product' => new ProductResource($product)
-            ]
+            'data' => ['product' => $product]
         ]);
     }
 

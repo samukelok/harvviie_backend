@@ -10,8 +10,43 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 
+/**
+ * @OA\Tag(
+ *     name="Product Images",
+ *     description="Endpoints for uploading and managing product images"
+ * )
+ */
 class ProductImageController extends Controller
 {
+    /**
+     * @OA\Post(
+     *     path="/api/products/{product}/images",
+     *     tags={"Product Images"},
+     *     summary="Upload images for a product",
+     *     @OA\Parameter(
+     *         name="product",
+     *         in="path",
+     *         required=true,
+     *         description="Product ID",
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\MediaType(
+     *             mediaType="multipart/form-data",
+     *             @OA\Schema(
+     *                 @OA\Property(
+     *                     property="images",
+     *                     type="array",
+     *                     @OA\Items(type="string", format="binary")
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(response=201, description="Images uploaded successfully"),
+     *     @OA\Response(response=422, description="Validation failed")
+     * )
+     */
     public function upload(Request $request, Product $product)
     {
         $validator = Validator::make($request->all(), [
@@ -55,6 +90,17 @@ class ProductImageController extends Controller
         ], 201);
     }
 
+    /**
+     * @OA\Delete(
+     *     path="/api/products/{product}/images/{image}",
+     *     tags={"Product Images"},
+     *     summary="Delete a product image",
+     *     @OA\Parameter(name="product", in="path", required=true, @OA\Schema(type="integer")),
+     *     @OA\Parameter(name="image", in="path", required=true, @OA\Schema(type="integer")),
+     *     @OA\Response(response=200, description="Image deleted successfully"),
+     *     @OA\Response(response=404, description="Image does not belong to this product")
+     * )
+     */
     public function destroy(Product $product, ProductImage $image)
     {
         if ($image->product_id !== $product->id) {

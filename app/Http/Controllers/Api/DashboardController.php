@@ -9,15 +9,78 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
+/**
+ * @OA\Tag(
+ *     name="Dashboard",
+ *     description="Endpoints for dashboard metrics and reports"
+ * )
+ */
 class DashboardController extends Controller
 {
+    /**
+     * @OA\Get(
+     *     path="/api/dashboard/summary",
+     *     tags={"Dashboard"},
+     *     summary="Get dashboard summary (sales, orders, recent orders)",
+     *     @OA\Response(
+     *         response=200,
+     *         description="Dashboard summary retrieved successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean"),
+     *             @OA\Property(property="message", type="string"),
+     *             @OA\Property(
+     *                 property="data",
+     *                 type="object",
+     *                 @OA\Property(
+     *                     property="sales_summary",
+     *                     type="object",
+     *                     @OA\Property(
+     *                         property="today",
+     *                         type="object",
+     *                         @OA\Property(property="amount_cents", type="integer"),
+     *                         @OA\Property(property="amount", type="number", format="float")
+     *                     ),
+     *                     @OA\Property(
+     *                         property="week",
+     *                         type="object",
+     *                         @OA\Property(property="amount_cents", type="integer"),
+     *                         @OA\Property(property="amount", type="number", format="float")
+     *                     ),
+     *                     @OA\Property(
+     *                         property="month",
+     *                         type="object",
+     *                         @OA\Property(property="amount_cents", type="integer"),
+     *                         @OA\Property(property="amount", type="number", format="float")
+     *                     )
+     *                 ),
+     *                 @OA\Property(
+     *                     property="orders_summary",
+     *                     type="object",
+     *                     @OA\Property(property="pending_count", type="integer"),
+     *                     @OA\Property(property="total_count", type="integer")
+     *                 ),
+     *                 @OA\Property(
+     *                     property="recent_orders",
+     *                     type="array",
+     *                     @OA\Items(
+     *                         type="object",
+     *                         @OA\Property(property="id", type="integer"),
+     *                         @OA\Property(property="status", type="string"),
+     *                         @OA\Property(property="amount_cents", type="integer"),
+     *                         @OA\Property(property="placed_at", type="string", format="date-time")
+     *                     )
+     *                 )
+     *             )
+     *         )
+     *     )
+     * )
+     */
     public function summary(Request $request)
     {
         $today = Carbon::today();
         $weekStart = Carbon::now()->startOfWeek();
         $monthStart = Carbon::now()->startOfMonth();
 
-        // Sales summary
         $todaySales = Order::whereDate('placed_at', $today)
             ->where('status', '!=', Order::STATUS_CANCELLED)
             ->sum('amount_cents');
@@ -30,11 +93,8 @@ class DashboardController extends Controller
             ->where('status', '!=', Order::STATUS_CANCELLED)
             ->sum('amount_cents');
 
-        // Order counts
         $pendingOrdersCount = Order::where('status', Order::STATUS_PENDING)->count();
         $totalOrdersCount = Order::count();
-
-        // Recent orders for quick view
         $recentOrders = Order::orderBy('created_at', 'desc')->limit(5)->get();
 
         return response()->json([
@@ -42,18 +102,9 @@ class DashboardController extends Controller
             'message' => 'Dashboard summary retrieved successfully',
             'data' => [
                 'sales_summary' => [
-                    'today' => [
-                        'amount_cents' => $todaySales,
-                        'amount' => $todaySales / 100,
-                    ],
-                    'week' => [
-                        'amount_cents' => $weekSales,
-                        'amount' => $weekSales / 100,
-                    ],
-                    'month' => [
-                        'amount_cents' => $monthSales,
-                        'amount' => $monthSales / 100,
-                    ],
+                    'today' => ['amount_cents' => $todaySales, 'amount' => $todaySales / 100],
+                    'week' => ['amount_cents' => $weekSales, 'amount' => $weekSales / 100],
+                    'month' => ['amount_cents' => $monthSales, 'amount' => $monthSales / 100],
                 ],
                 'orders_summary' => [
                     'pending_count' => $pendingOrdersCount,
@@ -64,11 +115,46 @@ class DashboardController extends Controller
         ]);
     }
 
+    /**
+     * @OA\Get(
+     *     path="/api/dashboard/top-products",
+     *     tags={"Dashboard"},
+     *     summary="Get top-selling products",
+     *     @OA\Parameter(
+     *         name="limit",
+     *         in="query",
+     *         description="Number of products to return",
+     *         required=false,
+     *         @OA\Schema(type="integer", default=10)
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Top products retrieved successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean"),
+     *             @OA\Property(property="message", type="string"),
+     *             @OA\Property(
+     *                 property="data",
+     *                 type="object",
+     *                 @OA\Property(
+     *                     property="top_products",
+     *                     type="array",
+     *                     @OA\Items(
+     *                         type="object",
+     *                         @OA\Property(property="product", type="object"),
+     *                         @OA\Property(property="total_quantity", type="integer"),
+     *                         @OA\Property(property="order_count", type="integer")
+     *                     )
+     *                 )
+     *             )
+     *         )
+     *     )
+     * )
+     */
     public function topProducts(Request $request)
     {
         $limit = $request->input('limit', 10);
 
-        // Get top products by counting occurrences in order items
         $topProducts = DB::table('orders')
             ->select(DB::raw('JSON_UNQUOTE(JSON_EXTRACT(item.value, "$.product_id")) as product_id'))
             ->selectRaw('SUM(JSON_UNQUOTE(JSON_EXTRACT(item.value, "$.quantity"))) as total_quantity')
@@ -80,7 +166,6 @@ class DashboardController extends Controller
             ->limit($limit)
             ->get();
 
-        // Get product details
         $productIds = $topProducts->pluck('product_id')->filter();
         $products = Product::whereIn('id', $productIds)->get()->keyBy('id');
 
@@ -91,19 +176,52 @@ class DashboardController extends Controller
                 'total_quantity' => (int) $item->total_quantity,
                 'order_count' => (int) $item->order_count,
             ];
-        })->filter(function ($item) {
-            return $item['product'] !== null;
-        });
+        })->filter(fn($item) => $item['product'] !== null);
 
         return response()->json([
             'success' => true,
             'message' => 'Top products retrieved successfully',
-            'data' => [
-                'top_products' => $topProductsData
-            ]
+            'data' => ['top_products' => $topProductsData]
         ]);
     }
 
+    /**
+     * @OA\Get(
+     *     path="/api/dashboard/pending-orders",
+     *     tags={"Dashboard"},
+     *     summary="Get pending orders",
+     *     @OA\Parameter(
+     *         name="limit",
+     *         in="query",
+     *         description="Number of orders to return",
+     *         required=false,
+     *         @OA\Schema(type="integer", default=10)
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Pending orders retrieved successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean"),
+     *             @OA\Property(property="message", type="string"),
+     *             @OA\Property(
+     *                 property="data",
+     *                 type="object",
+     *                 @OA\Property(
+     *                     property="pending_orders",
+     *                     type="array",
+     *                     @OA\Items(
+     *                         type="object",
+     *                         @OA\Property(property="id", type="integer"),
+     *                         @OA\Property(property="status", type="string"),
+     *                         @OA\Property(property="amount_cents", type="integer"),
+     *                         @OA\Property(property="placed_at", type="string", format="date-time")
+     *                     )
+     *                 )
+     *             )
+     *         )
+     *     )
+     * )
+     */
     public function pendingOrders(Request $request)
     {
         $limit = $request->input('limit', 10);
@@ -116,9 +234,7 @@ class DashboardController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Pending orders retrieved successfully',
-            'data' => [
-                'pending_orders' => $pendingOrders
-            ]
+            'data' => ['pending_orders' => $pendingOrders]
         ]);
     }
 }
