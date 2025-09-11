@@ -113,6 +113,7 @@ The application includes comprehensive migrations for all required tables:
 ### Seeded Data:
 - Admin user: `admin@harvviie.test` / `password`
 - Editor user: `editor@harvviie.test` / `password`
+- Customer user: `customer@harvviie.test` / `password`
 - 25 sample products with images
 - 8 collections with product assignments
 - 30+ sample orders
@@ -125,7 +126,7 @@ The application includes comprehensive migrations for all required tables:
 
 1. **Login to get token**
 ```bash
-curl -X POST http://127.0.0.1:8000/api/auth/login \
+curl -X POST http://localhost:8000/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "email": "admin@harvviie.test",
@@ -143,12 +144,36 @@ curl -X POST http://127.0.0.1:8000/api/auth/login \
       "id": 1,
       "name": "Admin User",
       "email": "admin@harvviie.test",
-      "role": "admin"
+      "role": "admin",
+      "phone": null,
+      "address": null
     },
     "token": "1|abc123...",
     "token_type": "Bearer"
   }
 }
+```
+
+### Customer Registration
+
+Customers can register for accounts to place orders:
+
+```bash
+curl -X POST http://localhost:8000/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "John Doe",
+    "email": "john@example.com",
+    "password": "password123",
+    "password_confirmation": "password123",
+    "phone": "+27 82 123 4567",
+    "address": {
+      "street": "123 Main Street",
+      "city": "Cape Town",
+      "postal_code": "8000",
+      "country": "South Africa"
+    }
+  }'
 ```
 
 2. **Use token in subsequent requests**
@@ -161,6 +186,7 @@ curl -X GET http://127.0.0.1:8000/api/dashboard/summary \
 
 - **Admin**: Full access to all endpoints, can delete resources
 - **Editor**: Can create/update most resources but cannot delete
+- **Customer**: Can register, login, view products, place orders, and view their order history
 - **Public**: Can view products, collections, banners, and submit messages
 
 ## API Endpoints
@@ -173,6 +199,7 @@ curl -X GET http://127.0.0.1:8000/api/dashboard/summary \
 | POST | `/api/auth/register` | No | Register new user |
 | POST | `/api/auth/logout` | Yes | Logout current user |
 | GET | `/api/auth/me` | Yes | Get current user info |
+| PUT | `/api/auth/profile` | Yes | Update user profile |
 
 ### Dashboard Endpoints
 
@@ -184,16 +211,18 @@ curl -X GET http://127.0.0.1:8000/api/dashboard/summary \
 
 ### Product Endpoints
 
+### Product Endpoints
+
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
 | GET | `/api/products` | No | List products with filters |
 | GET | `/api/products/{id}` | No | Get product details |
-| POST | `/api/products` | Yes | Create new product |
-| PUT | `/api/products/{id}` | Yes | Update product |
-| DELETE | `/api/products/{id}` | Yes | Soft delete product |
-| POST | `/api/products/{id}/restore` | Yes | Restore deleted product |
-| POST | `/api/products/{id}/images` | Yes | Upload product images |
-| DELETE | `/api/products/{id}/images/{imageId}` | Yes | Delete product image |
+| POST | `/api/products` | Admin/Editor | Create new product |
+| PUT | `/api/products/{id}` | Admin/Editor | Update product |
+| DELETE | `/api/products/{id}` | Admin/Editor | Soft delete product |
+| POST | `/api/products/{id}/restore` | Admin/Editor | Restore deleted product |
+| POST | `/api/products/{id}/images` | Admin/Editor | Upload product images |
+| DELETE | `/api/products/{id}/images/{imageId}` | Admin/Editor | Delete product image |
 
 ### Collection Endpoints
 
@@ -207,25 +236,24 @@ curl -X GET http://127.0.0.1:8000/api/dashboard/summary \
 | POST | `/api/collections/{id}/products` | Yes | Assign products to collection |
 | DELETE | `/api/collections/{id}/products/{productId}` | Yes | Remove product from collection |
 
-### Order Endpoints
-
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
-| GET | `/api/orders` | Yes | List orders with filters |
-| GET | `/api/orders/{id}` | Yes | Get order details |
+| GET | `/api/orders` | Admin/Editor | List all orders with filters |
+| GET | `/api/my-orders` | Customer | List customer's own orders |
+| GET | `/api/orders/{id}` | Yes | Get order details (own orders for customers) |
 | POST | `/api/orders` | Yes | Create new order |
-| PUT | `/api/orders/{id}` | Yes | Update order |
-| DELETE | `/api/orders/{id}` | Yes | Cancel order |
+| PUT | `/api/orders/{id}` | Admin/Editor | Update order |
+| DELETE | `/api/orders/{id}` | Admin/Editor | Cancel order |
 
 ### Banner Endpoints
 
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
 | GET | `/api/banners` | No | List banners (public) |
-| GET | `/api/banners/{id}` | Yes | Get banner details |
-| POST | `/api/banners` | Yes | Create banner |
-| PUT | `/api/banners/{id}` | Yes | Update banner |
-| DELETE | `/api/banners/{id}` | Yes | Delete banner |
+| GET | `/api/banners/{id}` | Admin/Editor | Get banner details |
+| POST | `/api/banners` | Admin/Editor | Create banner |
+| PUT | `/api/banners/{id}` | Admin/Editor | Update banner |
+| DELETE | `/api/banners/{id}` | Admin/Editor | Delete banner |
 
 ### Content Management Endpoints
 
@@ -302,6 +330,75 @@ php artisan test
 4. Use the token for protected endpoints
 
 ## API Implementation
+
+1. **Register as Customer**
+```bash
+curl -X POST http://localhost:8000/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Jane Customer",
+    "email": "jane@example.com",
+    "password": "password123",
+    "password_confirmation": "password123",
+    "phone": "+27 82 987 6543",
+    "address": {
+      "street": "456 Oak Avenue",
+      "city": "Johannesburg",
+      "postal_code": "2000",
+      "country": "South Africa"
+    }
+  }'
+```
+
+2. **Login as Customer**
+```bash
+curl -X POST http://localhost:8000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "jane@example.com",
+    "password": "password123"
+  }'
+```
+
+3. **Place an Order (Customer)**
+```bash
+curl -X POST http://localhost:8000/api/orders \
+  -H "Authorization: Bearer CUSTOMER_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "items": [
+      {
+        "product_id": 1,
+        "product_name": "Premium Cotton T-Shirt",
+        "quantity": 2,
+        "unit_price_cents": 2500
+      }
+    ],
+    "amount_cents": 5000
+  }'
+```
+
+4. **View My Orders (Customer)**
+```bash
+curl -X GET http://localhost:8000/api/my-orders \
+  -H "Authorization: Bearer CUSTOMER_TOKEN"
+```
+
+5. **Update Profile (Customer)**
+```bash
+curl -X PUT http://localhost:8000/api/auth/profile \
+  -H "Authorization: Bearer CUSTOMER_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "phone": "+27 82 111 2222",
+    "address": {
+      "street": "789 New Street",
+      "city": "Durban",
+      "postal_code": "4000",
+      "country": "South Africa"
+    }
+  }'
+```
 
 ### Complete Product Management Flow
 
@@ -486,6 +583,16 @@ The API includes comprehensive error handling for:
 - Validation errors (422)
 - Resource not found (404)
 - Server errors (500)
+
+### Role-based Access Control
+
+The API implements three user roles:
+
+- **Admin**: Full system access, can delete resources and manage users
+- **Editor**: Can manage products, collections, orders, and content but cannot delete
+- **Customer**: Can register, login, place orders, and view their order history
+
+Customers are automatically assigned to orders they create, and can only view their own orders. Staff (admin/editor) can view and manage all orders.
 
 ## Security Features
 
