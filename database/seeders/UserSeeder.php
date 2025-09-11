@@ -26,7 +26,24 @@ class UserSeeder extends Seeder
             'role' => User::ROLE_EDITOR,
         ]);
 
-        // Create additional test users
-        User::factory(8)->create();
+        // Create sample customer
+        User::create([
+            'name' => 'John Customer',
+            'email' => 'customer@harvviie.test',
+            'password' => Hash::make('password'),
+            'role' => User::ROLE_CUSTOMER,
+            'phone' => '+27 82 123 4567',
+            'address' => [
+                'street' => '123 Main Street',
+                'city' => 'Cape Town',
+                'postal_code' => '8000',
+                'country' => 'South Africa',
+            ],
+        ]);
+
+        // Create additional test users (mix of roles)
+        User::factory(5)->customer()->create();
+        User::factory(2)->editor()->create();
+        User::factory(1)->admin()->create();
     }
 }

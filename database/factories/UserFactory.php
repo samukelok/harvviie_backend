@@ -29,7 +29,17 @@ class UserFactory extends Factory
             'email' => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
-            'role' => fake()->randomElement([User::ROLE_ADMIN, User::ROLE_EDITOR]),
+            'role' => fake()->randomElement([User::ROLE_ADMIN, User::ROLE_EDITOR, User::ROLE_CUSTOMER]),
+            'phone' => fake()->optional(0.7)->phoneNumber(),
+            'address' => fake()->optional(0.8)->randomElement([
+                [
+                    'street' => fake()->streetAddress(),
+                    'city' => fake()->city(),
+                    'postal_code' => fake()->postcode(),
+                    'country' => 'South Africa',
+                ],
+                null
+            ]),
             'remember_token' => Str::random(10),
         ];
     }
@@ -55,6 +65,13 @@ class UserFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'role' => User::ROLE_EDITOR,
+        ]);
+    }
+
+    public function customer(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => User::ROLE_CUSTOMER,
         ]);
     }
 }
