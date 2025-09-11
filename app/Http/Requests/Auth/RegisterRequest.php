@@ -19,7 +19,13 @@ class RegisterRequest extends FormRequest
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:8|confirmed',
-            'role' => ['nullable', Rule::in([User::ROLE_ADMIN, User::ROLE_EDITOR])],
+            'phone' => 'nullable|string|max:20',
+            'address' => 'nullable|array',
+            'address.street' => 'nullable|string|max:255',
+            'address.city' => 'nullable|string|max:100',
+            'address.postal_code' => 'nullable|string|max:20',
+            'address.country' => 'nullable|string|max:100',
+            'role' => ['nullable', Rule::in([User::ROLE_ADMIN, User::ROLE_EDITOR, User::ROLE_CUSTOMER])],
         ];
     }
 }
