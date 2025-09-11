@@ -86,7 +86,9 @@ class AuthController extends Controller
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
-            'role' => $request->role ?? User::ROLE_EDITOR,
+            'phone' => $request->phone,
+            'address' => $request->address,
+            'role' => $request->role ?? User::ROLE_CUSTOMER,
         ]);
 
         $token = $user->createToken('auth_token')->plainTextToken;
@@ -204,6 +206,90 @@ class AuthController extends Controller
             'message' => 'User retrieved successfully',
             'data' => [
                 'user' => new UserResource($request->user())
+            ]
+        ]);
+    }
+
+    /**
+     * @OA\Put(
+     *     path="/api/auth/profile",
+     *     tags={"Auth"},
+     *     summary="Modify user profile",
+     *     security={{"sanctum":{}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             type="object",
+     *             @OA\Property(property="name", type="string", maxLength=255, nullable=true),
+     *             @OA\Property(property="phone", type="string", maxLength=20, nullable=true),
+     *             @OA\Property(
+     *                 property="address",
+     *                 type="object",
+     *                 nullable=true,
+     *                 @OA\Property(property="street", type="string", maxLength=255, nullable=true),
+     *                 @OA\Property(property="city", type="string", maxLength=100, nullable=true),
+     *                 @OA\Property(property="postal_code", type="string", maxLength=20, nullable=true),
+     *                 @OA\Property(property="country", type="string", maxLength=100, nullable=true)
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Profile updated successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Profile updated successfully"),
+     *             @OA\Property(
+     *                 property="data",
+     *                 type="object",
+     *                 @OA\Property(
+     *                     property="user",
+     *                     ref="#/components/schemas/UserResource"
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=422,
+     *         description="Validation error",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="message", type="string", example="The given data was invalid."),
+     *             @OA\Property(
+     *                 property="errors",
+     *                 type="object",
+     *                 additionalProperties=true
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=401,
+     *         description="Unauthenticated",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="message", type="string", example="Unauthenticated.")
+     *         )
+     *     )
+     * )
+     */
+    public function updateProfile(Request $request)
+    {
+        $request->validate([
+            'name' => 'sometimes|required|string|max:255',
+            'phone' => 'nullable|string|max:20',
+            'address' => 'nullable|array',
+            'address.street' => 'nullable|string|max:255',
+            'address.city' => 'nullable|string|max:100',
+            'address.postal_code' => 'nullable|string|max:20',
+            'address.country' => 'nullable|string|max:100',
+        ]);
+
+        $user = $request->user();
+        $user->update($request->only(['name', 'phone', 'address']));
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Profile updated successfully',
+            'data' => [
+                'user' => new UserResource($user)
             ]
         ]);
     }
