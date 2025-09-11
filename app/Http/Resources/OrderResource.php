@@ -5,6 +5,23 @@ namespace App\Http\Resources;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
+/**
+ * @OA\Schema(
+ *     schema="OrderResource",
+ *     type="object",
+ *     @OA\Property(property="id", type="integer"),
+ *     @OA\Property(property="status", type="string"),
+ *     @OA\Property(property="amount_cents", type="integer"),
+ *     @OA\Property(property="placed_at", type="string", format="date-time"),
+ *     @OA\Property(property="created_at", type="string", format="date-time"),
+ *     @OA\Property(property="updated_at", type="string", format="date-time"),
+ *     @OA\Property(property="customer_name", type="string"),
+ *     @OA\Property(property="customer_email", type="string"),
+ *     @OA\Property(property="shipping_address", type="string"),
+ *     @OA\Property(property="user_id", type="integer")
+ * )
+ */
+
 class OrderResource extends JsonResource
 {
     public function toArray(Request $request): array
