@@ -17,6 +17,8 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
+        'phone',
+        'address',
     ];
 
     protected $hidden = [
@@ -27,11 +29,13 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
+        'address' => 'array',
     ];
 
     // Role constants
     const ROLE_ADMIN = 'admin';
     const ROLE_EDITOR = 'editor';
+    const ROLE_CUSTOMER = 'customer';
 
     public function isAdmin(): bool
     {
@@ -41,6 +45,16 @@ class User extends Authenticatable
     public function isEditor(): bool
     {
         return $this->role === self::ROLE_EDITOR;
+    }
+
+    public function isCustomer(): bool
+    {
+        return $this->role === self::ROLE_CUSTOMER;
+    }
+
+    public function isStaff(): bool
+    {
+        return $this->isAdmin() || $this->isEditor();
     }
 
     public function orders()
