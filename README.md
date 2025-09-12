@@ -108,6 +108,8 @@ The application includes comprehensive migrations for all required tables:
 - `orders` - Customer orders with JSON item storage
 - `banners` - Homepage and promotional banners
 - `about` - Singleton table for about page content
+- `carts` - Shopping carts for users and guest sessions
+- `cart_items` - Individual items in shopping carts
 - `messages` - Customer contact and service request messages
 
 ### Seeded Data:
@@ -279,6 +281,17 @@ curl -X GET http://127.0.0.1:8000/api/dashboard/summary \
 | POST | `/api/upload` | Yes | Upload image file |
 | DELETE | `/api/upload/{filename}` | Yes | Delete uploaded file |
 
+### Cart Endpoints
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | `/api/cart` | No | Get current cart (user or session-based) |
+| POST | `/api/cart/items` | No | Add item to cart |
+| PUT | `/api/cart/items/{cartItemId}` | No | Update cart item quantity |
+| DELETE | `/api/cart/items/{cartItemId}` | No | Remove item from cart |
+| DELETE | `/api/cart/clear` | No | Clear entire cart |
+| POST | `/api/orders/from-cart` | Customer | Create order from cart contents |
+
 ## File Storage
 
 ### Image Upload
@@ -395,6 +408,51 @@ curl -X PUT http://localhost:8000/api/auth/profile \
       "street": "789 New Street",
       "city": "Durban",
       "postal_code": "4000",
+      "country": "South Africa"
+    }
+  }'
+```
+
+### Complete Shopping Cart Flow
+
+1. **Add Items to Cart (Guest or Authenticated)**
+```bash
+curl -X POST http://localhost:8000/api/cart/items \
+  -H "Content-Type: application/json" \
+  -H "X-Cart-Session: unique-session-id" \
+  -d '{
+    "product_id": 1,
+    "quantity": 2
+  }'
+```
+
+2. **View Cart**
+```bash
+curl -X GET http://localhost:8000/api/cart \
+  -H "X-Cart-Session: unique-session-id"
+```
+
+3. **Update Cart Item**
+```bash
+curl -X PUT http://localhost:8000/api/cart/items/1 \
+  -H "Content-Type: application/json" \
+  -H "X-Cart-Session: unique-session-id" \
+  -d '{
+    "quantity": 3
+  }'
+```
+
+4. **Create Order from Cart (Authenticated Customer)**
+```bash
+curl -X POST http://localhost:8000/api/orders/from-cart \
+  -H "Authorization: Bearer CUSTOMER_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "shipping_address": {
+      "name": "Jane Customer",
+      "street": "456 Oak Avenue",
+      "city": "Johannesburg",
+      "postal_code": "2000",
       "country": "South Africa"
     }
   }'
@@ -558,6 +616,46 @@ The dashboard endpoint provides sales analytics:
 }
 ```
 
+The cart system supports both authenticated users and guest sessions:
+
+```json
+{
+  "success": true,
+  "message": "Cart retrieved successfully",
+  "data": {
+    "cart": {
+      "id": 1,
+      "user_id": 3,
+      "session_id": null,
+      "status": "active",
+      "items": [
+        {
+          "id": 1,
+          "product_id": 1,
+          "product": {
+            "id": 1,
+            "name": "Premium Cotton T-Shirt",
+            "price_cents": 2500,
+            "discounted_price_cents": 2250
+          },
+          "quantity": 2,
+          "unit_price_cents": 2250,
+          "total_cents": 4500,
+          "total": 45.00
+        }
+      ],
+      "total_items": 2,
+      "subtotal_cents": 4500,
+      "subtotal": 45.00,
+      "tax_cents": 675,
+      "tax": 6.75,
+      "total_cents": 5175,
+      "total": 51.75
+    }
+  }
+}
+```
+
 ### Filtering and Pagination
 
 Most list endpoints support filtering and pagination:
@@ -598,10 +696,13 @@ Customers are automatically assigned to orders they create, and can only view th
 
 - Token-based authentication with Laravel Sanctum
 - Role-based access control (RBAC)
+- Cart session management for guest users
 - Input validation on all endpoints
 - SQL injection protection via Eloquent ORM
 - File upload security with type validation
 - Rate limiting on sensitive endpoints
+- Order access control (customers can only view their own orders)
+- Stock validation during cart operations and order creation
 
 ## Support
 
