@@ -66,4 +66,14 @@ class User extends Authenticatable
     {
         return $this->hasMany(About::class, 'updated_by_user_id');
     }
+
+    public function carts()
+    {
+        return $this->hasMany(Cart::class);
+    }
+
+    public function activeCart()
+    {
+        return $this->hasOne(Cart::class)->where('status', Cart::STATUS_ACTIVE);
+    }
 }
