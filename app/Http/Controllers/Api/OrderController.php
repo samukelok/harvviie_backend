@@ -7,7 +7,9 @@ use App\Http\Requests\Order\StoreOrderRequest;
 use App\Http\Requests\Order\UpdateOrderRequest;
 use App\Http\Resources\OrderResource;
 use App\Models\Order;
+use App\Models\Cart;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 /**
  * @OA\Tag(
@@ -284,30 +286,36 @@ class OrderController extends Controller
      *     @OA\RequestBody(
      *         required=true,
      *         @OA\JsonContent(
-     *             required={"status", "amount_cents", "placed_at"},
-     *             @OA\Property(property="status", type="string"),
-     *             @OA\Property(property="amount_cents", type="integer"),
+     *             required={"status", "amount_cents", "placed_at", "items"},
+     *             @OA\Property(property="status", type="string", example="pending"),
+     *             @OA\Property(property="amount_cents", type="integer", example=12000),
      *             @OA\Property(
      *                 property="items",
      *                 type="array",
      *                 @OA\Items(
      *                     type="object",
-     *                     @OA\Property(property="product_id", type="integer"),
-     *                     @OA\Property(property="quantity", type="integer"),
-     *                     @OA\Property(property="unit_price_cents", type="integer")
+     *                     required={"product_id", "quantity", "unit_price_cents"},
+     *                     @OA\Property(property="product_id", type="integer", example=5),
+     *                     @OA\Property(property="quantity", type="integer", example=2),
+     *                     @OA\Property(property="unit_price_cents", type="integer", example=6000)
      *                 )
      *             ),
      *             @OA\Property(property="placed_at", type="string", format="date-time"),
-     *             @OA\Property(property="customer_name", type="string", nullable=true),
-     *             @OA\Property(property="customer_email", type="string", nullable=true),
+     *
+     *             @OA\Property(property="customer_name", type="string", nullable=true, example="Jane Doe",
+     *                 description="Optional when authenticated as a customer"),
+     *             @OA\Property(property="customer_email", type="string", nullable=true, example="jane@example.com",
+     *                 description="Optional when authenticated as a customer"),
      *             @OA\Property(
      *                 property="shipping_address",
      *                 type="object",
-     *                 @OA\Property(property="name", type="string"),
-     *                 @OA\Property(property="street", type="string"),
-     *                 @OA\Property(property="city", type="string"),
-     *                 @OA\Property(property="postal_code", type="string"),
-     *                 @OA\Property(property="country", type="string")
+     *                 nullable=true,
+     *                 description="Optional when authenticated as a customer (defaults to profile address)",
+     *                 @OA\Property(property="name", type="string", example="Jane Doe"),
+     *                 @OA\Property(property="street", type="string", example="123 Main St"),
+     *                 @OA\Property(property="city", type="string", example="Johannesburg"),
+     *                 @OA\Property(property="postal_code", type="string", example="2000"),
+     *                 @OA\Property(property="country", type="string", example="ZA")
      *             )
      *         )
      *     ),
@@ -362,11 +370,190 @@ class OrderController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Order created successfully',
+            'message' => 'Order created successfully (direct method)',
             'data' => [
                 'order' => new OrderResource($order)
             ]
         ], 201);
+    }
+
+    /**
+     * Helper to get or create cart (handles session merging)
+     */
+    private function getOrCreateCart(Request $request)
+    {
+        if ($request->user()) {
+            return Cart::getOrCreateForUser($request->user()->id);
+        } else {
+            $sessionId = $request->header('X-Cart-Session') ?? $request->ip();
+            return Cart::getOrCreateForSession($sessionId);
+        }
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/api/orders/from-cart",
+     *     summary="Create order from the current user's active cart",
+     *     description="Converts the authenticated user's active cart into an order, updates product stock, and clears the cart.",
+     *     operationId="createOrderFromCart",
+     *     tags={"Orders"},
+     *     security={{"sanctum":{}}},
+     *
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             type="object",
+     *             required={"shipping_address"},
+     *             @OA\Property(
+     *                 property="shipping_address",
+     *                 type="object",
+     *                 required={"name","street","city","postal_code","country"},
+     *                 @OA\Property(property="name", type="string", example="John Doe"),
+     *                 @OA\Property(property="street", type="string", example="123 Main St"),
+     *                 @OA\Property(property="city", type="string", example="New York"),
+     *                 @OA\Property(property="postal_code", type="string", example="10001"),
+     *                 @OA\Property(property="country", type="string", example="USA")
+     *             )
+     *         )
+     *     ),
+     *
+     *     @OA\Response(
+     *         response=201,
+     *         description="Order created successfully",
+     *         @OA\JsonContent(
+     *             type="object",
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Order created successfully from cart"),
+     *             @OA\Property(property="data", type="object",
+     *                 @OA\Property(property="order", ref="#/components/schemas/OrderResource")
+     *             )
+     *         )
+     *     ),
+     *
+     *     @OA\Response(
+     *         response=400,
+     *         description="Cart empty or insufficient stock",
+     *         @OA\JsonContent(
+     *             type="object",
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Cart is empty or insufficient stock"),
+     *             @OA\Property(property="data", type="object", nullable=true)
+     *         )
+     *     ),
+     *
+     *     @OA\Response(
+     *         response=500,
+     *         description="Failed to create order",
+     *         @OA\JsonContent(
+     *             type="object",
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Failed to create order from cart"),
+     *             @OA\Property(property="data", type="object", nullable=true)
+     *         )
+     *     )
+     * )
+     */
+
+    public function createFromCart(Request $request)
+    {
+        $request->validate([
+            'shipping_address' => 'required|array',
+            'shipping_address.name' => 'required|string',
+            'shipping_address.street' => 'required|string',
+            'shipping_address.city' => 'required|string',
+            'shipping_address.postal_code' => 'required|string',
+            'shipping_address.country' => 'required|string',
+        ]);
+
+        DB::beginTransaction();
+
+        try {
+            // Get user's active cart (should exist after login merge)
+            $cart = Cart::where('user_id', auth()->id())
+                ->where('status', Cart::STATUS_ACTIVE)
+                ->with(['items.product'])
+                ->first();
+
+            if (!$cart) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No active cart found',
+                    'data' => null
+                ], 400);
+            }
+
+
+            if ($cart->items->isEmpty()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cart is empty',
+                    'data' => null
+                ], 400);
+            }
+
+            // Check stock availability for all items
+            foreach ($cart->items as $item) {
+                if ($item->product->stock < $item->quantity) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Insufficient stock for {$item->product->name}",
+                        'data' => [
+                            'product' => $item->product->name,
+                            'requested' => $item->quantity,
+                            'available' => $item->product->stock
+                        ]
+                    ], 400);
+                }
+            }
+
+            // Create order items array
+            $orderItems = [];
+            foreach ($cart->items as $item) {
+                $orderItems[] = [
+                    'product_id' => $item->product_id,
+                    'product_name' => $item->product->name,
+                    'quantity' => $item->quantity,
+                    'unit_price_cents' => $item->unit_price_cents,
+                ];
+            }
+
+            // Create the order
+            $order = Order::create([
+                'user_id' => auth()->id(),
+                'customer_name' => auth()->user()->name,
+                'customer_email' => auth()->user()->email,
+                'items' => $orderItems,
+                'amount_cents' => $cart->total_cents,
+                'shipping_address' => $request->shipping_address,
+                'status' => Order::STATUS_PENDING,
+            ]);
+
+            // Update product stock
+            foreach ($cart->items as $item) {
+                $item->product->decrement('stock', $item->quantity);
+            }
+
+            // Mark cart as converted and clear items
+            $cart->update(['status' => Cart::STATUS_CONVERTED]);
+            $cart->items()->delete();
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Order created successfully from cart',
+                'data' => [
+                    'order' => new OrderResource($order)
+                ]
+            ], 201);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to create order from cart',
+                'data' => null
+            ], 500);
+        }
     }
 
     /**
