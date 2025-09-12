@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\ProductImageController;
 use App\Http\Controllers\Api\UploadController;
+use App\Http\Controllers\Api\CartController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -38,6 +39,15 @@ Route::get('banners', [BannerController::class, 'index']);
 Route::get('about', [AboutController::class, 'show']);
 Route::post('messages', [MessageController::class, 'store']); // Public contact form
 
+// Cart routes (public - supports both authenticated and guest users)
+Route::prefix('cart')->group(function () {
+    Route::get('/', [CartController::class, 'show']);
+    Route::post('items', [CartController::class, 'addItem']);
+    Route::put('items/{cartItem}', [CartController::class, 'updateItem']);
+    Route::delete('items/{cartItem}', [CartController::class, 'removeItem']);
+    Route::delete('clear', [CartController::class, 'clear']);
+});
+
 // Protected routes (authentication required)
 Route::middleware('auth:sanctum')->group(function () {
     
@@ -50,7 +60,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Customer orders (customers can view their own orders)
     Route::get('my-orders', [OrderController::class, 'myOrders']);
-    Route::post('orders', [OrderController::class, 'store']); // Customers can create orders
+    Route::post('orders', [OrderController::class, 'store']); //
+    Route::post('orders/from-cart', [OrderController::class, 'createFromCart']); 
 
     // Admin/Editor only routes
     Route::middleware('role:admin,editor')->group(function () {
@@ -89,7 +100,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('orders/{order}', [OrderController::class, 'show']);
         Route::put('orders/{order}', [OrderController::class, 'update']);
         Route::delete('orders/{order}', [OrderController::class, 'destroy']);
-
+        
         // Banner management routes
         Route::apiResource('banners', BannerController::class)->except(['index', 'show']);
 
