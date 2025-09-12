@@ -767,6 +767,296 @@
                 }
             }
         },
+        "/api/cart": {
+            "get": {
+                "tags": [
+                    "Cart"
+                ],
+                "summary": "Get current user's cart",
+                "operationId": "0197bc7dd36ee12bfc09b13a30c959bb",
+                "responses": {
+                    "200": {
+                        "description": "Cart retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Cart retrieved successfully"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "cart": {
+                                                    "$ref": "#/components/schemas/CartResource"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/cart/items": {
+            "post": {
+                "tags": [
+                    "Cart"
+                ],
+                "summary": "Add item to cart",
+                "operationId": "71655c1ea70dfbb034f059570d0ab4a0",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "product_id",
+                                    "quantity"
+                                ],
+                                "properties": {
+                                    "product_id": {
+                                        "type": "integer",
+                                        "example": 5
+                                    },
+                                    "quantity": {
+                                        "type": "integer",
+                                        "example": 2
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Item added to cart successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Item added to cart successfully"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "cart": {
+                                                    "$ref": "#/components/schemas/CartResource"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Insufficient stock"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/cart/items/{id}": {
+            "put": {
+                "tags": [
+                    "Cart"
+                ],
+                "summary": "Update cart item quantity",
+                "operationId": "b3a18e4d10d861ac5816c469ff8d70dc",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "quantity"
+                                ],
+                                "properties": {
+                                    "quantity": {
+                                        "type": "integer",
+                                        "example": 3
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Cart item updated successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Cart item updated successfully"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "cart": {
+                                                    "$ref": "#/components/schemas/CartResource"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Cart item not found"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Cart"
+                ],
+                "summary": "Remove item from cart",
+                "operationId": "cb4f3d58ed218976bb461f6783c70b30",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Item removed from cart successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Item removed from cart successfully"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "cart": {
+                                                    "$ref": "#/components/schemas/CartResource"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Cart item not found"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/cart/clear": {
+            "delete": {
+                "tags": [
+                    "Cart"
+                ],
+                "summary": "Clear all items from cart",
+                "operationId": "bd6015ca61a67dac7c1ff3bdd096bfe3",
+                "responses": {
+                    "200": {
+                        "description": "Cart cleared successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Cart cleared successfully"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "cart": {
+                                                    "$ref": "#/components/schemas/CartResource"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
         "/api/collections": {
             "get": {
                 "tags": [
@@ -1906,27 +2196,38 @@
                                 "required": [
                                     "status",
                                     "amount_cents",
-                                    "placed_at"
+                                    "placed_at",
+                                    "items"
                                 ],
                                 "properties": {
                                     "status": {
-                                        "type": "string"
+                                        "type": "string",
+                                        "example": "pending"
                                     },
                                     "amount_cents": {
-                                        "type": "integer"
+                                        "type": "integer",
+                                        "example": 12000
                                     },
                                     "items": {
                                         "type": "array",
                                         "items": {
+                                            "required": [
+                                                "product_id",
+                                                "quantity",
+                                                "unit_price_cents"
+                                            ],
                                             "properties": {
                                                 "product_id": {
-                                                    "type": "integer"
+                                                    "type": "integer",
+                                                    "example": 5
                                                 },
                                                 "quantity": {
-                                                    "type": "integer"
+                                                    "type": "integer",
+                                                    "example": 2
                                                 },
                                                 "unit_price_cents": {
-                                                    "type": "integer"
+                                                    "type": "integer",
+                                                    "example": 6000
                                                 }
                                             },
                                             "type": "object"
@@ -1937,32 +2238,43 @@
                                         "format": "date-time"
                                     },
                                     "customer_name": {
+                                        "description": "Optional when authenticated as a customer",
                                         "type": "string",
+                                        "example": "Jane Doe",
                                         "nullable": true
                                     },
                                     "customer_email": {
+                                        "description": "Optional when authenticated as a customer",
                                         "type": "string",
+                                        "example": "jane@example.com",
                                         "nullable": true
                                     },
                                     "shipping_address": {
+                                        "description": "Optional when authenticated as a customer (defaults to profile address)",
                                         "properties": {
                                             "name": {
-                                                "type": "string"
+                                                "type": "string",
+                                                "example": "Jane Doe"
                                             },
                                             "street": {
-                                                "type": "string"
+                                                "type": "string",
+                                                "example": "123 Main St"
                                             },
                                             "city": {
-                                                "type": "string"
+                                                "type": "string",
+                                                "example": "Johannesburg"
                                             },
                                             "postal_code": {
-                                                "type": "string"
+                                                "type": "string",
+                                                "example": "2000"
                                             },
                                             "country": {
-                                                "type": "string"
+                                                "type": "string",
+                                                "example": "ZA"
                                             }
                                         },
-                                        "type": "object"
+                                        "type": "object",
+                                        "nullable": true
                                     }
                                 },
                                 "type": "object"
@@ -2427,6 +2739,146 @@
                                         "message": {
                                             "type": "string",
                                             "example": "No query results for model [App\\\\Models\\\\Order] {id}"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/orders/from-cart": {
+            "post": {
+                "tags": [
+                    "Orders"
+                ],
+                "summary": "Create order from the current user's active cart",
+                "description": "Converts the authenticated user's active cart into an order, updates product stock, and clears the cart.",
+                "operationId": "createOrderFromCart",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "shipping_address"
+                                ],
+                                "properties": {
+                                    "shipping_address": {
+                                        "required": [
+                                            "name",
+                                            "street",
+                                            "city",
+                                            "postal_code",
+                                            "country"
+                                        ],
+                                        "properties": {
+                                            "name": {
+                                                "type": "string",
+                                                "example": "John Doe"
+                                            },
+                                            "street": {
+                                                "type": "string",
+                                                "example": "123 Main St"
+                                            },
+                                            "city": {
+                                                "type": "string",
+                                                "example": "New York"
+                                            },
+                                            "postal_code": {
+                                                "type": "string",
+                                                "example": "10001"
+                                            },
+                                            "country": {
+                                                "type": "string",
+                                                "example": "USA"
+                                            }
+                                        },
+                                        "type": "object"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Order created successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Order created successfully from cart"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "order": {
+                                                    "$ref": "#/components/schemas/OrderResource"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Cart empty or insufficient stock",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Cart is empty or insufficient stock"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "nullable": true
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to create order",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Failed to create order from cart"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "nullable": true
                                         }
                                     },
                                     "type": "object"
@@ -2921,6 +3373,93 @@
                 },
                 "type": "object"
             },
+            "CartItemResource": {
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 10
+                    },
+                    "product_id": {
+                        "type": "integer",
+                        "example": 5
+                    },
+                    "quantity": {
+                        "type": "integer",
+                        "example": 2
+                    },
+                    "unit_price_cents": {
+                        "type": "integer",
+                        "example": 1200
+                    },
+                    "product": {
+                        "properties": {
+                            "id": {
+                                "type": "integer",
+                                "example": 5
+                            },
+                            "name": {
+                                "type": "string",
+                                "example": "Nike Air Zoom"
+                            },
+                            "stock": {
+                                "type": "integer",
+                                "example": 50
+                            },
+                            "price_cents": {
+                                "type": "integer",
+                                "example": 1500
+                            },
+                            "images": {
+                                "type": "array",
+                                "items": {
+                                    "properties": {
+                                        "url": {
+                                            "type": "string",
+                                            "example": "https://example.com/image.jpg"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        },
+                        "type": "object"
+                    }
+                },
+                "type": "object"
+            },
+            "CartResource": {
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "user_id": {
+                        "type": "integer",
+                        "example": 3,
+                        "nullable": true
+                    },
+                    "session_id": {
+                        "type": "string",
+                        "example": "abcd1234",
+                        "nullable": true
+                    },
+                    "status": {
+                        "type": "string",
+                        "example": "active"
+                    },
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/CartItemResource"
+                        }
+                    },
+                    "total_cents": {
+                        "type": "integer",
+                        "example": 2400
+                    }
+                },
+                "type": "object"
+            },
             "OrderResource": {
                 "properties": {
                     "id": {
@@ -3009,6 +3548,10 @@
         {
             "name": "Uploads",
             "description": "Endpoints for general file uploads"
+        },
+        {
+            "name": "Cart",
+            "description": "Cart"
         }
     ],
     "security": [
