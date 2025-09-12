@@ -7,9 +7,11 @@ use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
+use App\Models\Cart;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\DB;
 
 /**
  * @OA\Info(
@@ -134,6 +136,9 @@ class AuthController extends Controller
                 'email' => ['The provided credentials are incorrect.'],
             ]);
         }
+
+        // Merge guest cart with user cart if session cart exists
+        $this->mergeGuestCartWithUserCart($request, $user);
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
@@ -292,5 +297,50 @@ class AuthController extends Controller
                 'user' => new UserResource($user)
             ]
         ]);
+    }
+
+    private function mergeGuestCartWithUserCart(Request $request, User $user)
+    {
+        $sessionId = $request->header('X-Cart-Session') ?? $request->ip();
+
+        // Find guest cart
+        $guestCart = Cart::where('session_id', $sessionId)
+            ->where('status', Cart::STATUS_ACTIVE)
+            ->first();
+
+        if (!$guestCart || $guestCart->items->isEmpty()) {
+            return;
+        }
+
+        DB::transaction(function () use ($user, $guestCart) {
+            // Get or create user cart
+            $userCart = Cart::getOrCreateForUser($user->id);
+
+            // Merge items from guest cart to user cart
+            foreach ($guestCart->items as $guestItem) {
+                $existingItem = $userCart->items()
+                    ->where('product_id', $guestItem->product_id)
+                    ->first();
+
+                if ($existingItem) {
+                    // Update quantity and price
+                    $existingItem->update([
+                        'quantity' => $existingItem->quantity + $guestItem->quantity,
+                        'unit_price_cents' => $guestItem->product->discounted_price_cents
+                    ]);
+                } else {
+                    // Create new item in user cart
+                    $userCart->items()->create([
+                        'product_id' => $guestItem->product_id,
+                        'quantity' => $guestItem->quantity,
+                        'unit_price_cents' => $guestItem->product->discounted_price_cents
+                    ]);
+                }
+            }
+
+            // Delete guest cart and its items
+            $guestCart->items()->delete();
+            $guestCart->delete();
+        });
     }
 }
